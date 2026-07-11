@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Navbar from './components/Navbar.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import FxCursor from './components/FxCursor.jsx';
+import FxBackground from './components/FxBackground.jsx';
 
 // Pages
 import Login from './pages/Login.jsx';
@@ -20,122 +22,67 @@ import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import ManageReservations from './pages/admin/ManageReservations.jsx';
 import ManageTables from './pages/admin/ManageTables.jsx';
 
-// Root redirect handler
 const RootRedirect = () => {
   const { user } = useAuth();
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  return user.role === 'admin' ? (
-    <Navigate to="/admin/dashboard" replace />
-  ) : (
-    <Navigate to="/dashboard" replace />
-  );
+  if (!user) return <Navigate to="/login" replace />;
+  return user.role === 'admin'
+    ? <Navigate to="/admin/dashboard" replace />
+    : <Navigate to="/dashboard" replace />;
 };
 
 const AppContent = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Show navigation navbar only if user is logged in */}
+    <div className="min-h-screen relative">
+      {/* Global background — only shown when logged in to avoid double bg on auth pages */}
+      {user && <FxBackground />}
+
+      {/* Sidebar nav */}
       {user && <Navbar />}
-      
-      <main className="flex-grow">
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
 
-          {/* Customer Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['customer']}>
-                <CustomerDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reserve"
-            element={
-              <ProtectedRoute allowedRoles={['customer']}>
-                <ReserveTable />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reservations"
-            element={
-              <ProtectedRoute allowedRoles={['customer']}>
-                <MyReservations />
-              </ProtectedRoute>
-            }
-          />
+      {/* Main content — offset right of sidebar on desktop */}
+      <main
+        className="relative z-10 min-h-screen"
+        style={{
+          marginLeft: user ? undefined : 0,
+          paddingLeft: user ? undefined : 0,
+        }}
+      >
+        {/* Sidebar spacer on desktop */}
+        <div className={user ? 'md:pl-[244px]' : ''} style={{ minHeight: '100vh' }}>
+          <div className={user ? 'pt-4 md:pt-0 mt-14 md:mt-0' : ''}>
+            <Routes>
+              <Route path="/login"        element={<Login />} />
+              <Route path="/register"     element={<Register />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
 
-          {/* Admin Protected Routes */}
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/reservations"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <ManageReservations />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/tables"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <ManageTables />
-              </ProtectedRoute>
-            }
-          />
+              <Route path="/dashboard"    element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
+              <Route path="/reserve"      element={<ProtectedRoute allowedRoles={['customer']}><ReserveTable /></ProtectedRoute>} />
+              <Route path="/reservations" element={<ProtectedRoute allowedRoles={['customer']}><MyReservations /></ProtectedRoute>} />
 
-          {/* Shared Protected Routes */}
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
+              <Route path="/admin/dashboard"    element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/reservations" element={<ProtectedRoute allowedRoles={['admin']}><ManageReservations /></ProtectedRoute>} />
+              <Route path="/admin/tables"       element={<ProtectedRoute allowedRoles={['admin']}><ManageTables /></ProtectedRoute>} />
 
-          {/* Root Redirect Route */}
-          <Route path="/" element={<RootRedirect />} />
-
-          {/* Fallback Redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+              <Route path="/profile" element={<ProtectedRoute allowedRoles={['customer','admin']}><Profile /></ProtectedRoute>} />
+              <Route path="/"        element={<RootRedirect />} />
+              <Route path="*"        element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </div>
       </main>
-      
-      {/* Footer */}
-      {user && (
-        <footer className="py-6 text-center text-xs text-dark-400 border-t border-white/5 bg-dark-950/20 backdrop-blur-md">
-          &copy; {new Date().getFullYear()} FineDine Restaurant Reservation Management System. All rights reserved.
-        </footer>
-      )}
     </div>
   );
 };
 
-const App = () => {
-  return (
-    <Router>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </Router>
-  );
-};
+const App = () => (
+  <Router>
+    <FxCursor />
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  </Router>
+);
 
 export default App;

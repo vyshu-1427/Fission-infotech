@@ -45,6 +45,11 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         return { success: true };
       }
+      // Fallback: 2xx but success:false (unexpected)
+      return {
+        success: false,
+        message: response.data?.message || 'Registration failed. Please try again.',
+      };
     } catch (error) {
       return {
         success: false,
@@ -63,6 +68,11 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         return { success: true };
       }
+      // Fallback: 2xx but success:false (unexpected)
+      return {
+        success: false,
+        message: response.data?.message || 'Login failed. Please check your credentials.',
+      };
     } catch (error) {
       return {
         success: false,

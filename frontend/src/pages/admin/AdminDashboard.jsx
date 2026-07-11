@@ -1,182 +1,123 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../services/api.js';
-import { FiCalendar, FiMapPin, FiXCircle, FiTrendingUp, FiActivity, FiArrowRight } from 'react-icons/fi';
-import Spinner from '../../components/Spinner.jsx';
+
+const StatCard = ({ icon, label, value, color, delay }) => (
+  <div className="stat-card animate-fade-slide-up" style={{ '--accent-color':color, animationDelay:delay }}>
+    <div className="flex items-start justify-between mb-4">
+      <div className="icon-box text-lg" style={{ background:`${color}18`, border:`1px solid ${color}30` }}>{icon}</div>
+      <div className="w-2 h-2 rounded-full mt-1" style={{ background:color, boxShadow:`0 0 8px ${color}` }} />
+    </div>
+    <p className="text-3xl font-bold text-white mb-1" style={{ fontFamily:'Syne,sans-serif' }}>{value ?? '—'}</p>
+    <p className="text-xs text-white/40 uppercase tracking-wider">{label}</p>
+    <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-xl" style={{ background:`linear-gradient(90deg,transparent,${color}40,transparent)` }} />
+  </div>
+);
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState({
-    totalReservations: 0,
-    todayReservations: 0,
-    cancelledReservations: 0,
-    availableTables: 0,
-  });
-  const [todayBookings, setTodayBookings] = useState([]);
+  const [stats, setStats]   = useState(null);
+  const [recent, setRecent] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchAdminDashboardData = async () => {
-      try {
-        // 1. Fetch dashboard stats
-        const statsRes = await api.get('/admin/stats');
-        if (statsRes.data?.success) {
-          setStats(statsRes.data.data);
-        }
-
-        // 2. Fetch today's reservations for quick view
-        const todayStr = new Date().toISOString().split('T')[0];
-        const bookingsRes = await api.get(`/admin/reservations?date=${todayStr}&status=Booked`);
-        if (bookingsRes.data?.success) {
-          setTodayBookings(bookingsRes.data.data);
-        }
-      } catch (err) {
-        console.error('Error fetching admin dashboard data:', err);
-        setError('Failed to load dashboard data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAdminDashboardData();
+    Promise.all([
+      api.get('/admin/stats').catch(() => null),
+      api.get('/admin/reservations?limit=5').catch(() => null),
+    ]).then(([s, r]) => {
+      if (s?.data?.success) setStats(s.data.data);
+      if (r?.data?.success) setRecent(r.data.data.slice(0, 5));
+    }).finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div style={{ width:36,height:36,borderRadius:'50%',border:'2px solid rgba(59,130,246,0.15)',borderTopColor:'#3B82F6',animation:'spin360 .8s linear infinite' }} />
+    </div>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen p-6 lg:p-8 max-w-6xl mx-auto">
+
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Admin Dashboard</h1>
-        <p className="text-dark-300 mt-1">Monitor dining statistics, manage reservation logs, and configure tables.</p>
+      <div className="mb-8 animate-fade-slide-up">
+        <p className="text-xs text-white/30 uppercase tracking-widest mb-2">Admin Panel</p>
+        <h1 className="text-2xl font-bold text-white" style={{ fontFamily:'Syne,sans-serif' }}>
+          Control <span className="text-gradient-blue">Center</span>
+        </h1>
+        <p className="text-white/35 text-sm mt-0.5">Full restaurant management dashboard</p>
       </div>
 
-      {error && (
-        <div className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-          {error}
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Card 1: Total Reservations */}
-        <div className="glass-card p-6 rounded-2xl relative overflow-hidden">
-          <div className="absolute top-4 right-4 text-brand-400/20 font-extrabold text-5xl select-none">
-            All
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 mb-4">
-            <FiActivity className="w-5 h-5" />
-          </div>
-          <h3 className="text-dark-300 text-xs font-semibold uppercase tracking-wider">Total Bookings</h3>
-          <p className="text-2xl font-bold text-white mt-1">{stats.totalReservations}</p>
-        </div>
-
-        {/* Card 2: Today's Reservations */}
-        <div className="glass-card p-6 rounded-2xl relative overflow-hidden">
-          <div className="absolute top-4 right-4 text-emerald-400/20 font-extrabold text-5xl select-none">
-            Now
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4">
-            <FiCalendar className="w-5 h-5" />
-          </div>
-          <h3 className="text-dark-300 text-xs font-semibold uppercase tracking-wider">Today's Schedule</h3>
-          <p className="text-2xl font-bold text-white mt-1">{stats.todayReservations}</p>
-        </div>
-
-        {/* Card 3: Cancelled Reservations */}
-        <div className="glass-card p-6 rounded-2xl relative overflow-hidden">
-          <div className="absolute top-4 right-4 text-red-400/20 font-extrabold text-5xl select-none">
-            Void
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-4">
-            <FiXCircle className="w-5 h-5" />
-          </div>
-          <h3 className="text-dark-300 text-xs font-semibold uppercase tracking-wider">Cancelled Bookings</h3>
-          <p className="text-2xl font-bold text-white mt-1">{stats.cancelledReservations}</p>
-        </div>
-
-        {/* Card 4: Active Tables */}
-        <div className="glass-card p-6 rounded-2xl relative overflow-hidden">
-          <div className="absolute top-4 right-4 text-cyan-400/20 font-extrabold text-5xl select-none">
-            Room
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-4">
-            <FiMapPin className="w-5 h-5" />
-          </div>
-          <h3 className="text-dark-300 text-xs font-semibold uppercase tracking-wider">Active Tables</h3>
-          <p className="text-2xl font-bold text-white mt-1">{stats.availableTables}</p>
-        </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard icon="📋" label="Total Reservations" value={stats?.totalReservations}  color="#3B82F6" delay="0ms"   />
+        <StatCard icon="✓"  label="Confirmed"          value={stats?.bookedReservations} color="#06B6D4" delay="80ms"  />
+        <StatCard icon="✕"  label="Cancelled"          value={stats?.cancelledReservations} color="#EC4899" delay="160ms" />
+        <StatCard icon="🪑" label="Tables"             value={stats?.totalTables}        color="#8B5CF6" delay="240ms" />
       </div>
 
-      {/* Main Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Today's Reservation Timeline */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Today's Active Schedule</h2>
-            <Link to="/admin/reservations" className="text-sm font-semibold text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors">
-              Manage All <FiArrowRight />
-            </Link>
-          </div>
+      {/* Quick nav cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {[
+          { href:'/admin/reservations', icon:'📋', title:'Reservations', desc:'Manage all bookings', color:'#3B82F6' },
+          { href:'/admin/tables',       icon:'🪑', title:'Table Setup',  desc:'Configure floor plan', color:'#8B5CF6' },
+          { href:'/profile',            icon:'⚙',  title:'Settings',    desc:'Account preferences', color:'#06B6D4' },
+        ].map(({ href, icon, title, desc, color }, i) => (
+          <a key={href} href={href} className="glass-card p-5 group block animate-fade-slide-up" style={{ animationDelay:`${i*80}ms` }}>
+            <div className="icon-box mb-3 text-xl" style={{ background:`${color}15`, border:`1px solid ${color}25` }}>{icon}</div>
+            <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily:'Syne,sans-serif' }}>{title}</h3>
+            <p className="text-xs text-white/35">{desc}</p>
+            <span className="inline-flex items-center gap-1 mt-3 text-xs font-medium transition-all group-hover:gap-2" style={{ color }}>
+              Manage <span className="transition-transform group-hover:translate-x-0.5">→</span>
+            </span>
+          </a>
+        ))}
+      </div>
 
-          {todayBookings.length === 0 ? (
-            <div className="glass-card p-8 rounded-2xl text-center text-dark-300 border border-white/5">
-              No reservations scheduled for today.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {todayBookings.slice(0, 5).map((booking) => (
-                <div key={booking._id} className="glass-card p-4 rounded-xl border border-white/5 flex items-center justify-between gap-4">
-                  <div>
-                    <h3 className="font-bold text-white">{booking.userId?.name}</h3>
-                    <p className="text-xs text-dark-300 mt-0.5">{booking.userId?.email}</p>
-                    <div className="flex gap-4 mt-2 text-xs text-dark-400">
-                      <span>Time: <strong className="text-dark-200">{booking.timeSlot}</strong></span>
-                      <span>Guests: <strong className="text-dark-200">{booking.numberOfGuests}</strong></span>
-                      <span>Table: <strong className="text-dark-200">#{booking.tableId?.tableNumber}</strong></span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-brand-500/10 text-brand-400 border border-brand-500/20">
-                      {booking.timeSlot}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {todayBookings.length > 5 && (
-                <p className="text-center text-xs text-dark-400">And {todayBookings.length - 5} more reservations scheduled for today...</p>
-              )}
-            </div>
-          )}
+      {/* Recent bookings */}
+      <div className="glass-card animate-fade-slide-up stagger-4">
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <h2 className="text-sm font-semibold text-white" style={{ fontFamily:'Syne,sans-serif' }}>Recent Reservations</h2>
+          <a href="/admin/reservations" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">View all →</a>
         </div>
-
-        {/* Right Column: Shortcut Menu & Quick Settings */}
-        <div className="space-y-6">
-          <h2 className="text-xl font-bold text-white">Management Links</h2>
-          
-          <div className="space-y-4">
-            <Link to="/admin/reservations" className="glass-card glass-card-hover p-5 rounded-2xl block">
-              <h3 className="font-bold text-white mb-1">Manage Reservations</h3>
-              <p className="text-xs text-dark-300">View, search, edit, or cancel client bookings across all dates.</p>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-400 mt-3">
-                Open reservation log <FiArrowRight />
-              </span>
-            </Link>
-
-            <Link to="/admin/tables" className="glass-card glass-card-hover p-5 rounded-2xl block">
-              <h3 className="font-bold text-white mb-1">Manage Restaurant Tables</h3>
-              <p className="text-xs text-dark-300">Configure layout capacities, toggle statuses, and safely delete inactive tables.</p>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-400 mt-3">
-                Open table builder <FiArrowRight />
-              </span>
-            </Link>
+        {recent.length === 0 ? (
+          <div className="py-10 text-center text-white/25 text-sm">No reservations yet</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="fx-table">
+              <thead>
+                <tr>
+                  {['Customer','Date','Time','Table','Status'].map(h => <th key={h}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {recent.map(res => (
+                  <tr key={res._id}>
+                    <td>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white"
+                          style={{ background:'linear-gradient(135deg,#3B82F6,#8B5CF6)' }}>
+                          {res.userId?.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-white">{res.userId?.name}</p>
+                          <p className="text-[10px] text-white/30">{res.userId?.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-sm">{res.reservationDate}</td>
+                    <td className="text-sm">{res.timeSlot}</td>
+                    <td className="text-sm">#{res.tableId?.tableNumber}</td>
+                    <td>
+                      <span className={`badge ${res.status === 'Booked' ? 'badge-green' : 'badge-red'}`}>
+                        {res.status === 'Booked' && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
+                        {res.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

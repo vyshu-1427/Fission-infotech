@@ -1,186 +1,136 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { FiUser, FiMail, FiLock, FiAlertCircle } from 'react-icons/fi';
+import FxBackground from '../components/FxBackground.jsx';
 import Spinner from '../components/Spinner.jsx';
+
+const FieldIcon = ({ children }) => (
+  <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-blue-400/60 z-10">
+    {children}
+  </span>
+);
 
 const Register = () => {
   const { register, user } = useAuth();
   const navigate = useNavigate();
-
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [name,    setName]    = useState('');
+  const [email,   setEmail]   = useState('');
+  const [pass,    setPass]    = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
-  // If already logged in, redirect
   useEffect(() => {
-    if (user) {
-      if (user.role === 'admin') {
-        navigate('/admin/dashboard', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
-    }
+    if (user) navigate(user.role === 'admin' ? '/admin/dashboard' : '/dashboard', { replace: true });
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    // Client side validation
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+    e.preventDefault(); setError('');
+    if (pass.length < 6)   return setError('Password must be at least 6 characters.');
+    if (pass !== confirm)  return setError('Passwords do not match.');
     setLoading(true);
     try {
-      const result = await register(name, email, password);
-      if (!result.success) {
-        setError(result.message);
-      }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+      const r = await register(name, email, pass);
+      if (r && !r.success) setError(r.message);
+    } catch { setError('An unexpected error occurred.'); }
+    finally  { setLoading(false); }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="glass-card max-w-md w-full p-8 rounded-2xl shadow-2xl relative overflow-hidden">
-        {/* Sleek top brand accent line */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-500 to-cyan-400" />
+  const fields = [
+    { id:'name',    type:'text',     value:name,    set:setName,    icon:'👤', ph:'Full Name' },
+    { id:'email',   type:'email',    value:email,   set:setEmail,   icon:'✉',  ph:'Email Address' },
+    { id:'pass',    type:'password', value:pass,    set:setPass,    icon:'🔒', ph:'Password (min 6 chars)' },
+    { id:'confirm', type:'password', value:confirm, set:setConfirm, icon:'🔒', ph:'Confirm Password' },
+  ];
 
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <span className="inline-flex w-12 h-12 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-400 items-center justify-center text-white font-extrabold text-2xl shadow-lg shadow-brand-500/25 mb-4">
-            🍽️
-          </span>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">Create Account</h2>
-          <p className="mt-2 text-sm text-dark-300">
-            Sign up to reserve and manage table bookings
-          </p>
+  return (
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
+      <FxBackground />
+
+      {/* Decorative orbs */}
+      {[
+        { w:110, pos:'top:18%, left:calc(50% - 350px)', c:'#3B82F6', del:'0s' },
+        { w:70,  pos:'bottom:20%, left:calc(50% - 390px)', c:'#EC4899', del:'1.5s' },
+        { w:90,  pos:'top:25%, right:calc(50% - 350px)', c:'#8B5CF6', del:'0.8s' },
+        { w:60,  pos:'bottom:28%, right:calc(50% - 400px)', c:'#06B6D4', del:'2s' },
+      ].map(({ w, pos, c, del }, i) => (
+        <div key={i} className="absolute pointer-events-none" style={{
+          width: w, height: w, [pos.split(',')[0].split(':')[0]]: pos.split(',')[0].split(':')[1],
+          [pos.split(',')[1].trim().split(':')[0]]: pos.split(',')[1].trim().split(':').slice(1).join(':'),
+          background: `radial-gradient(circle, ${c}55 0%, transparent 70%)`,
+          borderRadius: '50%', filter: 'blur(18px)',
+          animation: `floatY ${6+i}s ease-in-out infinite`, animationDelay: del,
+        }} />
+      ))}
+
+      <div className="relative z-10 w-full max-w-md animate-fade-slide-up">
+        {/* Logo */}
+        <div className="text-center mb-7">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-3"
+            style={{ background:'linear-gradient(135deg,#06B6D4,#3B82F6)', boxShadow:'0 0 25px rgba(6,182,212,0.5)' }}>
+            <span className="text-xl">✦</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gradient-animated mb-0.5" style={{ fontFamily:'Syne,sans-serif', backgroundSize:'300% auto' }}>
+            FineDine
+          </h1>
+          <p className="text-white/35 text-xs tracking-widest uppercase">Create your account</p>
         </div>
 
-        {/* Error Alert */}
-        {error && (
-          <div className="mb-6 flex items-start gap-2.5 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-            <FiAlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
+        <div className="grad-border" style={{ borderRadius:24 }}>
+          <div className="glass-card p-7" style={{ borderRadius:24 }}>
+            <div style={{ height:2, marginBottom:24, borderRadius:99, background:'linear-gradient(90deg, transparent, rgba(6,182,212,0.6), rgba(59,130,246,0.4), transparent)' }} />
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Name Input */}
-          <div>
-            <label className="block text-sm font-medium text-dark-200 mb-1.5" htmlFor="name">
-              Full Name
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-dark-400">
-                <FiUser className="w-5 h-5" />
-              </span>
-              <input
-                id="name"
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
-                className="w-full pl-11 pr-4 py-3 bg-dark-900/60 border border-white/5 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all text-sm"
-              />
+            <h2 className="text-xl font-bold text-white mb-1" style={{ fontFamily:'Syne,sans-serif' }}>Join FineDine</h2>
+            <p className="text-white/40 text-sm mb-6">Reserve premium dining experiences</p>
+
+            {error && (
+              <div className="mb-5 px-4 py-3 rounded-xl text-sm text-red-400 flex items-center gap-2"
+                style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)' }}>
+                <span>⚠</span> {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {fields.map(({ id, type, value, set, icon, ph }) => (
+                <div key={id} className="relative">
+                  <FieldIcon><span style={{ fontSize:15 }}>{icon}</span></FieldIcon>
+                  <input id={id} type={type} required value={value} onChange={e => set(e.target.value)}
+                    placeholder={ph} className="input-glass" />
+                </div>
+              ))}
+
+              <button type="submit" disabled={loading}
+                className="btn-primary w-full py-3.5 mt-2"
+                style={{ background:'linear-gradient(135deg,#06B6D4,#3B82F6,#8B5CF6)', borderRadius:14 }}>
+                {loading ? <Spinner size="sm" /> : <>Create Account <span className="ml-1">✦</span></>}
+              </button>
+            </form>
+
+            <div className="flex items-center gap-3 my-5">
+              <div className="fx-divider flex-1" />
+              <span className="text-white/25 text-xs">or sign up with</span>
+              <div className="fx-divider flex-1" />
             </div>
-          </div>
 
-          {/* Email Input */}
-          <div>
-            <label className="block text-sm font-medium text-dark-200 mb-1.5" htmlFor="email">
-              Email Address
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-dark-400">
-                <FiMail className="w-5 h-5" />
-              </span>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full pl-11 pr-4 py-3 bg-dark-900/60 border border-white/5 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all text-sm"
-              />
+            <div className="flex gap-3">
+              <button className="btn-glass flex-1 py-3 text-sm gap-2">
+                <span>G</span> <span className="text-white/60">Google</span>
+              </button>
+              <button className="btn-glass flex-1 py-3 text-sm gap-2">
+                <span>⌘</span> <span className="text-white/60">Apple</span>
+              </button>
             </div>
+
+            <p className="text-center text-sm text-white/40 mt-5">
+              Already have an account?{' '}
+              <Link to="/login" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
+                Sign in
+              </Link>
+            </p>
+
+            <div style={{ height:2, marginTop:24, borderRadius:99, background:'linear-gradient(90deg, transparent, rgba(6,182,212,0.3), transparent)' }} />
           </div>
-
-          {/* Password Input */}
-          <div>
-            <label className="block text-sm font-medium text-dark-200 mb-1.5" htmlFor="password">
-              Password
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-dark-400">
-                <FiLock className="w-5 h-5" />
-              </span>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
-                className="w-full pl-11 pr-4 py-3 bg-dark-900/60 border border-white/5 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Confirm Password Input */}
-          <div>
-            <label className="block text-sm font-medium text-dark-200 mb-1.5" htmlFor="confirmPassword">
-              Confirm Password
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-dark-400">
-                <FiLock className="w-5 h-5" />
-              </span>
-              <input
-                id="confirmPassword"
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-                className="w-full pl-11 pr-4 py-3 bg-dark-900/60 border border-white/5 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 hover:shadow-xl transition-all cursor-pointer flex items-center justify-center"
-          >
-            {loading ? <Spinner size="sm" className="p-0" /> : 'Register'}
-          </button>
-        </form>
-
-        {/* Footer */}
-        <p className="mt-8 text-center text-sm text-dark-300">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-brand-400 hover:text-brand-300 transition-colors">
-            Log in here
-          </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

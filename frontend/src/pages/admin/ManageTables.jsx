@@ -1,326 +1,197 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
-import { FiPlus, FiTrash2, FiToggleLeft, FiToggleRight, FiCheckCircle, FiAlertCircle, FiSettings, FiEdit2, FiX } from 'react-icons/fi';
-import Spinner from '../../components/Spinner.jsx';
 
 const ManageTables = () => {
-  const [tables, setTables] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  // Add Table Form State
+  const [tables,      setTables]      = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState('');
+  const [success,     setSuccess]     = useState('');
   const [tableNumber, setTableNumber] = useState('');
-  const [capacity, setCapacity] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [addLoading, setAddLoading] = useState(false);
+  const [capacity,    setCapacity]    = useState('');
+  const [isActive,    setIsActive]    = useState(true);
+  const [addLoading,  setAddLoading]  = useState(false);
+  const [editing,     setEditing]     = useState(null);
+  const [editCap,     setEditCap]     = useState('');
+  const [editActive,  setEditActive]  = useState(true);
+  const [editLoad,    setEditLoad]    = useState(false);
+  const [editError,   setEditError]   = useState('');
 
-  // Edit Table Modal State
-  const [editingTable, setEditingTable] = useState(null);
-  const [editCapacity, setEditCapacity] = useState('');
-  const [editIsActive, setEditIsActive] = useState(true);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState('');
-
-  useEffect(() => {
-    fetchTables();
-  }, []);
+  useEffect(() => { fetchTables(); }, []);
 
   const fetchTables = async () => {
     try {
-      const response = await api.get('/tables');
-      if (response.data?.success) {
-        setTables(response.data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching tables:', err);
-      setError('Failed to fetch restaurant tables.');
-    } finally {
-      setLoading(false);
-    }
+      const r = await api.get('/tables');
+      if (r.data?.success) setTables(r.data.data);
+    } catch { setError('Failed to fetch tables.'); }
+    finally  { setLoading(false); }
   };
 
-  const handleAddTable = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
+  const toast = (msg) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3500); };
 
-    if (!tableNumber || Number(tableNumber) < 1) {
-      setError('Table number must be at least 1');
-      return;
-    }
-    if (!capacity || Number(capacity) < 1) {
-      setError('Capacity must be at least 1');
-      return;
-    }
-
+  const handleAdd = async (e) => {
+    e.preventDefault(); setError('');
+    if (!tableNumber || Number(tableNumber) < 1) return setError('Table number must be ≥ 1.');
+    if (!capacity    || Number(capacity)    < 1) return setError('Capacity must be ≥ 1.');
     setAddLoading(true);
     try {
-      const response = await api.post('/tables', {
-        tableNumber: Number(tableNumber),
-        capacity: Number(capacity),
-        isActive,
-      });
-
-      if (response.data?.success) {
-        setSuccess(`Table #${tableNumber} created successfully!`);
-        setTableNumber('');
-        setCapacity('');
-        setIsActive(true);
-        fetchTables(); // Refresh list
-      }
-    } catch (err) {
-      console.error('Error creating table:', err);
-      setError(err.response?.data?.message || 'Failed to create table. Table number might already exist.');
-    } finally {
-      setAddLoading(false);
-    }
+      const r = await api.post('/tables', { tableNumber: Number(tableNumber), capacity: Number(capacity), isActive });
+      if (r.data?.success) { toast(`Table #${tableNumber} created.`); setTableNumber(''); setCapacity(''); setIsActive(true); fetchTables(); }
+    } catch (err) { setError(err.response?.data?.message || 'Create failed.'); }
+    finally { setAddLoading(false); }
   };
 
-  const handleToggleActive = async (table) => {
-    setError('');
-    setSuccess('');
-    const newActiveState = !table.isActive;
-
+  const handleToggle = async (t) => {
+    const ns = !t.isActive;
     try {
-      const response = await api.put(`/tables/${table._id}`, {
-        isActive: newActiveState,
-      });
-
-      if (response.data?.success) {
-        setTables((prev) =>
-          prev.map((t) => (t._id === table._id ? { ...t, isActive: newActiveState } : t))
-        );
-        setSuccess(`Table #${table.tableNumber} is now ${newActiveState ? 'active' : 'inactive'}.`);
-      }
-    } catch (err) {
-      console.error('Error updating active state:', err);
-      setError('Failed to update table status.');
-    }
+      const r = await api.put(`/tables/${t._id}`, { isActive: ns });
+      if (r.data?.success) { setTables(prev => prev.map(x => x._id === t._id ? { ...x, isActive:ns } : x)); toast(`Table #${t.tableNumber} ${ns?'activated':'deactivated'}.`); }
+    } catch { setError('Status update failed.'); }
   };
 
-  const handleDelete = async (id, tableNum) => {
-    setError('');
-    setSuccess('');
-
-    if (!window.confirm(`Are you sure you want to delete Table #${tableNum}?`)) {
-      return;
-    }
-
+  const handleDelete = async (id, num) => {
+    if (!window.confirm(`Delete Table #${num}?`)) return;
     try {
-      const response = await api.delete(`/tables/${id}`);
-      if (response.data?.success) {
-        setSuccess(`Table #${tableNum} deleted successfully.`);
-        setTables((prev) => prev.filter((t) => t._id !== id));
-      }
-    } catch (err) {
-      console.error('Error deleting table:', err);
-      setError(err.response?.data?.message || 'Failed to delete table.');
-    }
+      const r = await api.delete(`/tables/${id}`);
+      if (r.data?.success) { toast(`Table #${num} deleted.`); setTables(prev => prev.filter(t => t._id !== id)); }
+    } catch (err) { setError(err.response?.data?.message || 'Delete failed.'); }
   };
 
-  // Open Edit Modal
-  const openEditModal = (table) => {
-    setEditingTable(table);
-    setEditCapacity(table.capacity);
-    setEditIsActive(table.isActive);
-    setEditError('');
-  };
+  const openEdit = (t) => { setEditing(t); setEditCap(t.capacity); setEditActive(t.isActive); setEditError(''); };
 
-  // Submit Edit Modal
   const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    setEditError('');
-    setEditLoading(true);
-
+    e.preventDefault(); setEditError(''); setEditLoad(true);
     try {
-      const response = await api.put(`/tables/${editingTable._id}`, {
-        capacity: Number(editCapacity),
-        isActive: editIsActive,
-      });
-
-      if (response.data?.success) {
-        setSuccess(`Table #${editingTable.tableNumber} updated successfully.`);
-        setEditingTable(null);
-        fetchTables(); // Refresh list
-      }
-    } catch (err) {
-      console.error('Error updating table:', err);
-      setEditError(err.response?.data?.message || 'Failed to update table details.');
-    } finally {
-      setEditLoading(false);
-    }
+      const r = await api.put(`/tables/${editing._id}`, { capacity: Number(editCap), isActive: editActive });
+      if (r.data?.success) { toast(`Table #${editing.tableNumber} updated.`); setEditing(null); fetchTables(); }
+    } catch (err) { setEditError(err.response?.data?.message || 'Update failed.'); }
+    finally { setEditLoad(false); }
   };
+
+  const Toggle = ({ checked, onChange }) => (
+    <button type="button" onClick={onChange}
+      className="relative rounded-full transition-all duration-200 shrink-0"
+      style={{ width:36, height:20, background: checked ? 'linear-gradient(135deg,#3B82F6,#8B5CF6)' : 'rgba(255,255,255,0.1)', boxShadow: checked ? '0 0 10px rgba(59,130,246,0.4)' : 'none' }}>
+      <span className="absolute top-0.5 rounded-full bg-white shadow transition-all duration-200"
+        style={{ width:16, height:16, left: checked ? '18px' : '2px' }} />
+    </button>
+  );
+
+  const active   = tables.filter(t => t.isActive).length;
+  const inactive = tables.length - active;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen p-6 lg:p-8 max-w-7xl mx-auto">
+
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-white tracking-tight">Manage Tables</h1>
-        <p className="text-dark-300 mt-1">Configure layout arrangements, add new seats, and control table availability states.</p>
+      <div className="mb-7 animate-fade-slide-up">
+        <h1 className="text-2xl font-bold text-white" style={{ fontFamily:'Syne,sans-serif' }}>
+          Table <span className="text-gradient-blue">Manager</span>
+        </h1>
+        <p className="text-white/35 text-sm mt-0.5">Configure seating, capacities, and availability</p>
       </div>
 
-      {success && (
-        <div className="mb-6 flex items-start gap-2.5 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/20 text-sm text-emerald-400">
-          <FiCheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
-          <span>{success}</span>
-        </div>
-      )}
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-7">
+        {[
+          { label:'Total',    value:tables.length, color:'#3B82F6' },
+          { label:'Active',   value:active,         color:'#06B6D4' },
+          { label:'Inactive', value:inactive,        color:'rgba(255,255,255,0.3)' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="glass-panel p-4 text-center animate-fade-slide-up">
+            <p className="text-2xl font-bold mb-1" style={{ fontFamily:'Syne,sans-serif', color }}>{value}</p>
+            <p className="text-[10px] uppercase tracking-widest text-white/30">{label}</p>
+          </div>
+        ))}
+      </div>
 
-      {error && (
-        <div className="mb-6 flex items-start gap-2.5 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-          <FiAlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-          <span>{error}</span>
-        </div>
-      )}
+      {/* Alerts */}
+      {success && <div className="mb-4 px-4 py-3 rounded-xl text-sm text-green-400 animate-fade-slide-up" style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)' }}>✓ {success}</div>}
+      {error   && <div className="mb-4 px-4 py-3 rounded-xl text-sm text-red-400 animate-fade-slide-up"   style={{ background:'rgba(239,68,68,0.08)',   border:'1px solid rgba(239,68,68,0.2)'   }}>⚠ {error}</div>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Add Table Form */}
-        <div>
-          <div className="glass-card p-6 rounded-2xl relative overflow-hidden sticky top-24">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-500 to-cyan-400" />
-            <h2 className="text-xl font-bold text-white mb-6">Create New Table</h2>
-            
-            <form onSubmit={handleAddTable} className="space-y-4">
-              {/* Table Number */}
-              <div>
-                <label className="block text-xs font-semibold text-dark-200 uppercase mb-1.5" htmlFor="tableNumber">Table Number</label>
-                <input
-                  id="tableNumber"
-                  type="number"
-                  required
-                  min="1"
-                  value={tableNumber}
-                  onChange={(e) => setTableNumber(e.target.value)}
-                  placeholder="e.g. 7"
-                  className="w-full px-3.5 py-2.5 bg-dark-900/60 border border-white/5 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-brand-500 text-sm"
-                />
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-              {/* Table Capacity */}
-              <div>
-                <label className="block text-xs font-semibold text-dark-200 uppercase mb-1.5" htmlFor="capacity">Capacity (Seats)</label>
-                <input
-                  id="capacity"
-                  type="number"
-                  required
-                  min="1"
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                  placeholder="e.g. 4"
-                  className="w-full px-3.5 py-2.5 bg-dark-900/60 border border-white/5 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-brand-500 text-sm"
-                />
-              </div>
-
-              {/* Is Active Checkbox */}
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-sm text-dark-200 font-medium">Activate Table</span>
-                <button
-                  type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  className="text-2xl text-brand-400 hover:text-brand-300 transition-colors focus:outline-none cursor-pointer"
-                >
-                  {isActive ? <FiToggleRight className="text-brand-500 w-8 h-8" /> : <FiToggleLeft className="text-dark-400 w-8 h-8" />}
+        {/* Add form */}
+        <div className="lg:col-span-3">
+          <div className="glass-card overflow-hidden sticky top-24 animate-fade-slide-up stagger-1">
+            <div className="px-5 py-4" style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              <h2 className="text-sm font-semibold text-white" style={{ fontFamily:'Syne,sans-serif' }}>Add New Table</h2>
+            </div>
+            <div className="p-5">
+              <form onSubmit={handleAdd} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1.5">Table Number</label>
+                  <input type="number" required min="1" value={tableNumber} onChange={e => setTableNumber(e.target.value)}
+                    placeholder="e.g. 7" className="input-glass" style={{ paddingLeft:12 }} />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1.5">Capacity</label>
+                  <input type="number" required min="1" value={capacity} onChange={e => setCapacity(e.target.value)}
+                    placeholder="e.g. 4" className="input-glass" style={{ paddingLeft:12 }} />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-xs text-white/50">Activate table</span>
+                  <Toggle checked={isActive} onChange={() => setIsActive(!isActive)} />
+                </div>
+                <button type="submit" disabled={addLoading} className="btn-primary w-full py-2.5 text-sm">
+                  {addLoading ? '…' : '+ Add Table'}
                 </button>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={addLoading}
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 hover:shadow-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                {addLoading ? <Spinner size="sm" className="p-0" /> : <><FiPlus /> Add Table</>}
-              </button>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
 
-        {/* Right Column: Interactive Floorplan Table Cards List */}
-        <div className="lg:col-span-2">
+        {/* Table grid */}
+        <div className="lg:col-span-9">
           {loading ? (
-            <div className="flex justify-center p-12">
-              <Spinner size="lg" />
+            <div className="flex justify-center py-16">
+              <div style={{ width:32,height:32,borderRadius:'50%',border:'2px solid rgba(59,130,246,0.15)',borderTopColor:'#3B82F6',animation:'spin360 .8s linear infinite' }} />
             </div>
           ) : tables.length === 0 ? (
-            <div className="glass-card p-12 rounded-3xl text-center border border-white/5">
-              <p className="text-dark-300">No tables configured in the restaurant layout yet.</p>
+            <div className="glass-card flex flex-col items-center justify-center py-16 text-center">
+              <div className="text-4xl mb-3 opacity-25">🪑</div>
+              <p className="text-white/25 text-sm">No tables configured yet</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {tables.map((table) => (
-                <div
-                  key={table._id}
-                  className={`glass-card p-6 rounded-2xl relative overflow-hidden border transition-all flex flex-col justify-between ${
-                    table.isActive
-                      ? 'border-brand-500/10 hover:border-brand-500/30 hover:shadow-lg hover:shadow-brand-500/5'
-                      : 'border-white/5 opacity-60'
-                  }`}
-                >
-                  {/* Table visual display */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      {/* Round visual table shape */}
-                      <span className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg border shadow ${
-                        table.isActive
-                          ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 border-brand-400'
-                          : 'bg-dark-800 border-dark-700 text-dark-300'
-                      }`}>
-                        T{table.tableNumber}
-                      </span>
-                      <div>
-                        <h3 className="font-bold text-white text-lg">Table #{table.tableNumber}</h3>
-                        <p className="text-xs text-dark-300">{table.capacity} Seats capacity</p>
-                      </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {tables.map(t => (
+                <div key={t._id} className={`glass-card p-5 transition-all duration-200 animate-fade-slide-up ${!t.isActive ? 'opacity-50' : ''}`}>
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0"
+                      style={{ background: t.isActive ? 'linear-gradient(135deg,#3B82F6,#8B5CF6)' : 'rgba(255,255,255,0.06)', boxShadow: t.isActive ? '0 0 12px rgba(59,130,246,0.3)' : 'none' }}>
+                      T{t.tableNumber}
                     </div>
-
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      table.isActive
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
-                        : 'bg-dark-800 text-dark-400 border border-dark-700'
-                    }`}>
-                      {table.isActive ? 'Active' : 'Inactive'}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white" style={{ fontFamily:'Syne,sans-serif' }}>Table #{t.tableNumber}</p>
+                      <p className="text-[11px] text-white/35">{t.capacity} seats</p>
+                    </div>
+                    <span className={`ml-auto badge ${t.isActive ? 'badge-green' : ''}`}
+                      style={!t.isActive ? { background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.3)', fontSize:10, padding:'2px 8px', borderRadius:99, fontWeight:600, letterSpacing:'0.04em' } : {}}>
+                      {t.isActive ? '● Active' : '○ Off'}
                     </span>
                   </div>
 
-                  {/* Actions Row */}
-                  <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-6">
-                    <button
-                      onClick={() => handleToggleActive(table)}
-                      title={table.isActive ? 'Deactivate table' : 'Activate table'}
-                      className="text-dark-300 hover:text-white transition-colors flex items-center gap-1 text-xs cursor-pointer focus:outline-none"
-                    >
-                      {table.isActive ? (
-                        <>
-                          <FiToggleRight className="text-emerald-500 w-5 h-5" /> Active
-                        </>
-                      ) : (
-                        <>
-                          <FiToggleLeft className="text-dark-400 w-5 h-5" /> Inactive
-                        </>
-                      )}
+                  {/* Capacity bar */}
+                  <div className="mb-4" style={{ height:3, background:'rgba(255,255,255,0.06)', borderRadius:99 }}>
+                    <div style={{ height:'100%', borderRadius:99, width:`${Math.min(t.capacity*10,100)}%`,
+                      background: t.isActive ? 'linear-gradient(90deg,#3B82F6,#8B5CF6)' : 'rgba(255,255,255,0.1)',
+                      boxShadow: t.isActive ? '0 0 6px rgba(59,130,246,0.5)' : 'none' }} />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-3" style={{ borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                    <button onClick={() => handleToggle(t)} className="text-xs font-semibold transition-colors"
+                      style={{ color: t.isActive ? '#4ade80' : 'rgba(255,255,255,0.3)' }}>
+                      {t.isActive ? '● Active' : '○ Inactive'}
                     </button>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openEditModal(table)}
-                        className="p-1.5 rounded-lg text-brand-400 hover:text-brand-350 hover:bg-brand-500/10 transition-colors cursor-pointer"
-                        title="Edit Details"
-                      >
-                        <FiEdit2 className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(table._id, table.tableNumber)}
-                        disabled={table.isActive}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                          table.isActive
-                            ? 'text-dark-500 cursor-not-allowed opacity-50'
-                            : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
-                        }`}
-                        title={table.isActive ? 'Make table inactive to delete' : 'Delete Table'}
-                      >
-                        <FiTrash2 className="w-4 h-4" />
+                    <div className="flex gap-1">
+                      <button onClick={() => openEdit(t)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all"
+                        style={{ background:'rgba(59,130,246,0.1)', color:'#60A5FA' }}>✎</button>
+                      <button onClick={() => handleDelete(t._id, t.tableNumber)} disabled={t.isActive}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all"
+                        style={{ background: t.isActive ? 'rgba(255,255,255,0.03)' : 'rgba(239,68,68,0.1)', color: t.isActive ? 'rgba(255,255,255,0.15)' : '#f87171', cursor: t.isActive ? 'not-allowed' : 'pointer' }}>
+                        ✕
                       </button>
                     </div>
                   </div>
@@ -331,73 +202,37 @@ const ManageTables = () => {
         </div>
       </div>
 
-      {/* Editing Table Modal */}
-      {editingTable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="glass-card max-w-md w-full p-8 rounded-2xl shadow-2xl relative overflow-hidden animate-scale-in">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-brand-500" />
-            
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">Edit Table #{editingTable.tableNumber}</h2>
-              <button
-                onClick={() => setEditingTable(null)}
-                className="p-1 rounded-lg text-dark-300 hover:text-white hover:bg-white/5 transition-all"
-              >
-                <FiX className="w-5 h-5" />
-              </button>
+      {/* Edit modal */}
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ background:'rgba(0,0,0,0.7)' }} onClick={() => setEditing(null)}>
+          <div className="grad-border animate-fade-slide-up" style={{ borderRadius:24, maxWidth:360, width:'100%' }} onClick={e => e.stopPropagation()}>
+            <div className="glass-card p-6" style={{ borderRadius:24 }}>
+              <div style={{ height:2, marginBottom:20, borderRadius:99, background:'linear-gradient(90deg,transparent,rgba(59,130,246,0.6),rgba(139,92,246,0.4),transparent)' }} />
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-base font-bold text-white" style={{ fontFamily:'Syne,sans-serif' }}>Edit Table #{editing.tableNumber}</h2>
+                <button onClick={() => setEditing(null)} className="text-white/30 hover:text-white/60 transition-colors">✕</button>
+              </div>
+              {editError && <div className="mb-4 px-3 py-2 rounded-lg text-xs text-red-400" style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)' }}>{editError}</div>}
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] text-white/30 uppercase tracking-widest mb-1.5">Capacity</label>
+                  <input type="number" required min="1" value={editCap} onChange={e => setEditCap(e.target.value)}
+                    className="input-glass" style={{ paddingLeft:12 }} />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-xs text-white/50">Active</span>
+                  <Toggle checked={editActive} onChange={() => setEditActive(!editActive)} />
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setEditing(null)} className="btn-glass flex-1 py-2.5 text-sm">Cancel</button>
+                  <button type="submit" disabled={editLoad} className="btn-primary flex-1 py-2.5 text-sm">
+                    {editLoad ? '…' : 'Save'}
+                  </button>
+                </div>
+              </form>
+              <div style={{ height:2, marginTop:20, borderRadius:99, background:'linear-gradient(90deg,transparent,rgba(139,92,246,0.3),transparent)' }} />
             </div>
-
-            {editError && (
-              <div className="mb-4 flex items-start gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
-                <FiAlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{editError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              {/* Capacity */}
-              <div>
-                <label className="block text-xs font-semibold text-dark-200 uppercase mb-1">Capacity (Seats)</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={editCapacity}
-                  onChange={(e) => setEditCapacity(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-900/60 border border-white/5 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-brand-500 text-sm"
-                />
-              </div>
-
-              {/* Status active toggler */}
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-sm text-dark-200 font-medium font-semibold uppercase text-xs">Active Status</span>
-                <button
-                  type="button"
-                  onClick={() => setEditIsActive(!editIsActive)}
-                  className="text-2xl text-brand-400 hover:text-brand-300 transition-colors focus:outline-none cursor-pointer"
-                >
-                  {editIsActive ? <FiToggleRight className="text-brand-500 w-8 h-8" /> : <FiToggleLeft className="text-dark-400 w-8 h-8" />}
-                </button>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setEditingTable(null)}
-                  className="w-1/2 py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-semibold border border-white/5 transition-all cursor-pointer text-center"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={editLoading}
-                  className="w-1/2 py-2 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all shadow-lg shadow-brand-500/20 cursor-pointer flex items-center justify-center"
-                >
-                  {editLoading ? <Spinner size="sm" className="p-0" /> : 'Save Changes'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

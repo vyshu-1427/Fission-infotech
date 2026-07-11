@@ -1,187 +1,160 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { FiUser, FiMail, FiLock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import Spinner from '../components/Spinner.jsx';
+
+const SectionCard = ({ title, desc, children, accent = '#3B82F6' }) => (
+  <div className="glass-card overflow-hidden animate-fade-slide-up">
+    <div className="px-6 py-4" style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+      <h3 className="text-sm font-semibold text-white" style={{ fontFamily:'Syne,sans-serif' }}>{title}</h3>
+      {desc && <p className="text-xs text-white/35 mt-0.5">{desc}</p>}
+    </div>
+    <div className="p-6">{children}</div>
+    <div style={{ height:1, background:`linear-gradient(90deg,transparent,${accent}30,transparent)` }} />
+  </div>
+);
+
+const InputRow = ({ label, children }) => (
+  <div>
+    <label className="block text-xs font-semibold uppercase tracking-widest text-white/30 mb-2">{label}</label>
+    {children}
+  </div>
+);
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
-
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
+  const [name,    setName]    = useState(user?.name  || '');
+  const [email,   setEmail]   = useState(user?.email || '');
+  const [pass,    setPass]    = useState('');
+  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    // Input validation
-    if (password && password.length < 6) {
-      setError('New password must be at least 6 characters long');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+    e.preventDefault(); setError(''); setSuccess('');
+    if (pass && pass.length < 6) return setError('Password must be at least 6 characters.');
+    if (pass !== confirm)        return setError('Passwords do not match.');
     setLoading(true);
     try {
-      const result = await updateProfile(name, email, password || undefined);
-      if (result.success) {
-        setSuccess('Profile updated successfully!');
-        setPassword('');
-        setConfirmPassword('');
-      } else {
-        setError(result.message);
-      }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+      const r = await updateProfile(name, email, pass || undefined);
+      if (r.success) { setSuccess('Profile updated successfully.'); setPass(''); setConfirm(''); }
+      else setError(r.message);
+    } catch { setError('An unexpected error occurred.'); }
+    finally  { setLoading(false); }
   };
 
+  const initial = user?.name?.charAt(0).toUpperCase() || 'U';
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-white tracking-tight">Account Profile</h1>
-        <p className="text-dark-300 mt-1">Review or update your personal account settings and security credentials.</p>
+    <div className="min-h-screen p-6 lg:p-8 max-w-5xl mx-auto">
+
+      <div className="mb-7 animate-fade-slide-up">
+        <h1 className="text-2xl font-bold text-white" style={{ fontFamily:'Syne,sans-serif' }}>
+          Account <span className="text-gradient-blue">Profile</span>
+        </h1>
+        <p className="text-white/35 text-sm mt-0.5">Manage your personal information and security</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - User Info Card */}
-        <div className="glass-card p-6 rounded-2xl text-center self-start relative overflow-hidden border border-white/5">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-500 to-cyan-400" />
-          <div className="w-20 h-20 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center mx-auto mb-4 text-3xl font-bold shadow-lg shadow-brand-500/5">
-            {user?.name?.charAt(0).toUpperCase() || 'U'}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        {/* Sidebar */}
+        <div className="lg:col-span-4 space-y-4">
+
+          {/* Avatar card */}
+          <div className="glass-card p-6 text-center animate-fade-slide-up">
+            {/* Avatar */}
+            <div className="relative inline-block mb-4">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold text-white mx-auto"
+                style={{ background:'linear-gradient(135deg,#3B82F6,#8B5CF6)', boxShadow:'0 0 30px rgba(59,130,246,0.4), 0 0 60px rgba(139,92,246,0.2)', fontFamily:'Syne,sans-serif' }}>
+                {initial}
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                style={{ background:'#09090B', border:'2px solid rgba(34,197,94,0.5)' }}>
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              </div>
+            </div>
+            <h2 className="text-base font-bold text-white mb-1" style={{ fontFamily:'Syne,sans-serif' }}>{user?.name}</h2>
+            <p className="text-xs text-white/35 mb-4">{user?.email}</p>
+            <span className="badge badge-blue">
+              {user?.role === 'admin' ? '⚡ Admin' : '✦ Customer'}
+            </span>
           </div>
-          <h2 className="text-xl font-bold text-white">{user?.name}</h2>
-          <p className="text-sm text-dark-300 mt-1">{user?.email}</p>
-          <div className="mt-4 inline-flex px-3 py-1 rounded-full bg-brand-500/20 text-brand-400 text-xs font-semibold uppercase tracking-wider">
-            {user?.role} Account
+
+          {/* Info chips */}
+          <div className="glass-panel p-5 space-y-3 animate-fade-slide-up stagger-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 mb-3">Account Details</p>
+            {[
+              ['Status',       'Active'],
+              ['Role',         user?.role === 'admin' ? 'Administrator' : 'Customer'],
+              ['Member Since', 'Active'],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between text-xs py-2" style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                <span className="text-white/30">{k}</span>
+                <span className="text-white/70">{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Security tips */}
+          <div className="glass-panel p-5 animate-fade-slide-up stagger-2"
+            style={{ border:'1px solid rgba(59,130,246,0.12)', background:'rgba(59,130,246,0.04)' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-blue-400/60 mb-3">Security Tips</p>
+            <ul className="space-y-1.5 text-[11px] text-white/35">
+              <li>• Use a strong, unique password</li>
+              <li>• Keep your email up to date</li>
+              <li>• Log out on shared devices</li>
+            </ul>
           </div>
         </div>
 
-        {/* Right Column - Update Profile Form */}
-        <div className="glass-card lg:col-span-2 p-8 rounded-2xl relative overflow-hidden">
+        {/* Form area */}
+        <div className="lg:col-span-8 space-y-5">
           {success && (
-            <div className="mb-6 flex items-start gap-2.5 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/20 text-sm text-emerald-400">
-              <FiCheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
-              <span>{success}</span>
+            <div className="px-4 py-3 rounded-xl text-sm text-green-400 flex items-center gap-2 animate-fade-slide-up"
+              style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)' }}>
+              ✓ {success}
             </div>
           )}
-
           {error && (
-            <div className="mb-6 flex items-start gap-2.5 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-              <FiAlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-              <span>{error}</span>
+            <div className="px-4 py-3 rounded-xl text-sm text-red-400 flex items-center gap-2 animate-fade-slide-up"
+              style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)' }}>
+              ⚠ {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Input */}
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2" htmlFor="name">
-                Full Name
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-dark-400">
-                  <FiUser className="w-5 h-5" />
-                </span>
-                <input
-                  id="name"
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-dark-900/60 border border-white/5 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all text-sm"
-                />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <SectionCard title="Personal Information" desc="Update your name and email address" accent="#3B82F6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputRow label="Full Name">
+                  <input type="text" required value={name} onChange={e => setName(e.target.value)}
+                    className="input-glass" style={{ paddingLeft:16 }} />
+                </InputRow>
+                <InputRow label="Email Address">
+                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                    className="input-glass" style={{ paddingLeft:16 }} />
+                </InputRow>
               </div>
-            </div>
+            </SectionCard>
 
-            {/* Email Input */}
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2" htmlFor="email">
-                Email Address
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-dark-400">
-                  <FiMail className="w-5 h-5" />
-                </span>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-dark-900/60 border border-white/5 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all text-sm"
-                />
+            <SectionCard title="Change Password" desc="Leave blank to keep your current password" accent="#8B5CF6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputRow label="New Password">
+                  <input type="password" value={pass} onChange={e => setPass(e.target.value)}
+                    placeholder="Min 6 characters" className="input-glass" style={{ paddingLeft:16 }} />
+                </InputRow>
+                <InputRow label="Confirm Password">
+                  <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
+                    placeholder="Repeat password" className="input-glass" style={{ paddingLeft:16 }} />
+                </InputRow>
               </div>
+            </SectionCard>
+
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-xs text-white/25">Changes apply immediately</p>
+              <button type="submit" disabled={loading} className="btn-primary px-7 py-3">
+                {loading ? <div style={{ width:16,height:16,borderRadius:'50%',border:'2px solid rgba(255,255,255,0.2)',borderTopColor:'white',animation:'spin360 .8s linear infinite' }} /> : 'Save Changes'}
+              </button>
             </div>
-
-            <div className="pt-4 border-t border-white/5">
-              <h3 className="text-lg font-bold text-white mb-4">Change Password</h3>
-              <p className="text-xs text-dark-300 mb-4">Leave fields empty if you do not want to modify your password.</p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Password Input */}
-                <div>
-                  <label className="block text-sm font-medium text-dark-200 mb-2" htmlFor="password">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-dark-400">
-                      <FiLock className="w-5 h-5" />
-                    </span>
-                    <input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
-                      className="w-full pl-11 pr-4 py-3 bg-dark-900/60 border border-white/5 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Confirm Password Input */}
-                <div>
-                  <label className="block text-sm font-medium text-dark-200 mb-2" htmlFor="confirmPassword">
-                    Confirm Password
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-dark-400">
-                      <FiLock className="w-5 h-5" />
-                    </span>
-                    <input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm password"
-                      className="w-full pl-11 pr-4 py-3 bg-dark-900/60 border border-white/5 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 hover:shadow-xl transition-all cursor-pointer flex items-center justify-center"
-            >
-              {loading ? <Spinner size="sm" className="p-0" /> : 'Save Changes'}
-            </button>
           </form>
         </div>
       </div>
