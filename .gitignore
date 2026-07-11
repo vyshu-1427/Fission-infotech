@@ -9,6 +9,7 @@ frontend/dist/
 
 # Environment configurations
 .env
+frontend/.env
 backend/.env
 .env*.local
 
