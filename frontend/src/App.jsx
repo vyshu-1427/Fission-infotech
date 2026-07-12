@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Navbar from './components/Navbar.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import FxCursor from './components/FxCursor.jsx';
 import FxBackground from './components/FxBackground.jsx';
 
 // Pages
@@ -11,6 +10,7 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Unauthorized from './pages/Unauthorized.jsx';
 import Profile from './pages/Profile.jsx';
+import Landing from './pages/Landing.jsx';
 
 // Customer Pages
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
@@ -22,13 +22,7 @@ import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import ManageReservations from './pages/admin/ManageReservations.jsx';
 import ManageTables from './pages/admin/ManageTables.jsx';
 
-const RootRedirect = () => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  return user.role === 'admin'
-    ? <Navigate to="/admin/dashboard" replace />
-    : <Navigate to="/dashboard" replace />;
-};
+
 
 const AppContent = () => {
   const { user } = useAuth();
@@ -66,7 +60,7 @@ const AppContent = () => {
               <Route path="/admin/tables"       element={<ProtectedRoute allowedRoles={['admin']}><ManageTables /></ProtectedRoute>} />
 
               <Route path="/profile" element={<ProtectedRoute allowedRoles={['customer','admin']}><Profile /></ProtectedRoute>} />
-              <Route path="/"        element={<RootRedirect />} />
+              <Route path="/"        element={<Landing />} />
               <Route path="*"        element={<Navigate to="/" replace />} />
             </Routes>
           </div>
@@ -78,7 +72,6 @@ const AppContent = () => {
 
 const App = () => (
   <Router>
-    <FxCursor />
     <AuthProvider>
       <AppContent />
     </AuthProvider>

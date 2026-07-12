@@ -64,29 +64,38 @@ export const registerUser = async (req, res, next) => {
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log('[DEBUG LOGIN] Request email:', email);
+    console.log('[DEBUG LOGIN] Request password length:', password ? password.length : 0);
 
     // Find user by email
     const user = await User.findOne({ email });
+    console.log('[DEBUG LOGIN] User found in DB:', user ? { _id: user._id, email: user.email, role: user.role } : 'NOT FOUND');
 
-    // Verify user exists and verify password matches
-    if (user && (await user.comparePassword(password))) {
-      res.json({
-        success: true,
-        data: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          token: generateToken(user._id),
-        },
-      });
-    } else {
-      res.status(401).json({
-        success: false,
-        message: 'Invalid email or password',
-      });
+    if (user) {
+      const isMatch = await user.comparePassword(password);
+      console.log('[DEBUG LOGIN] Password match result:', isMatch);
+      
+      if (isMatch) {
+        res.json({
+          success: true,
+          data: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            token: generateToken(user._id),
+          },
+        });
+        return;
+      }
     }
+
+    res.status(401).json({
+      success: false,
+      message: 'Invalid email or password',
+    });
   } catch (error) {
+    console.error('[DEBUG LOGIN] Error during login:', error);
     next(error);
   }
 };
