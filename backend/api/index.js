@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
-import app from './app.js';
-import connectDB from './config/db.js';
-import { seedDatabase } from './seed/seedTables.js';
+import app from '../app.js';
+import connectDB from '../config/db.js';
+import { seedDatabase } from '../seed/seedTables.js';
 
 // Load environment variables
 dotenv.config();
