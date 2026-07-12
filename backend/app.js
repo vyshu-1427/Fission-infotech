@@ -8,7 +8,6 @@ import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
 
-// Configure CORS
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -16,13 +15,18 @@ app.use(
         process.env.CLIENT_URL,
         'http://localhost:5173',
         'http://localhost:5174',
-        'http://localhost:5175'
+        'http://localhost:5175',
+        'https://fission-infotech-pied.vercel.app'
       ];
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (like mobile apps), or local/explicit origins, or any Vercel deployment of this app
+      if (
+        !origin || 
+        allowedOrigins.includes(origin) ||
+        origin.match(/^https:\/\/fission-infotech-[a-z0-9]+-vyshus-projects-[0-9]+\.vercel\.app$/)
+      ) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error(`Not allowed by CORS: ${origin}`));
       }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
