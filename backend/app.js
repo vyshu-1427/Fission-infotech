@@ -11,7 +11,20 @@ const app = express();
 // Configure CORS
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        process.env.CLIENT_URL,
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175'
+      ];
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
   })
